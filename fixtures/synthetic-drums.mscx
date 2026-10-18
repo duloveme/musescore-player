@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="4.00">
+  <programVersion>4.0.2</programVersion>
+  <Score>
+    <LayerTag id="0" tag="default"></LayerTag>
+    <currentLayer>0</currentLayer>
+    <Division>480</Division>
+    <showInvisible>1</showInvisible>
+    <showUnprintable>1</showUnprintable>
+    <showFrames>1</showFrames>
+    <showMargins>0</showMargins>
+    <metaTag name="workTitle">연습용 드럼</metaTag>
+    <metaTag name="composer">합성 악보</metaTag>
+    <metaTag name="lyricist">가사 테스트</metaTag>
+    <Part>
+      <Staff id="1">
+        <StaffType group="percussion">
+          <name>perc5Line</name>
+        </StaffType>
+        <barLineSpan>1</barLineSpan>
+      </Staff>
+      <trackName>드럼</trackName>
+      <Instrument id="drumset">
+        <longName>드럼 세트</longName>
+        <shortName>Dr.</shortName>
+        <trackName>드럼</trackName>
+        <instrumentId>drum.group.set</instrumentId>
+        <clef>PERC</clef>
+        <useDrumset>1</useDrumset>
+        <Channel>
+          <program value="0"/>
+          <midiPort>0</midiPort>
+          <midiChannel>9</midiChannel>
+          <synti>Fluid</synti>
+        </Channel>
+      </Instrument>
+    </Part>
+    <Staff id="1">
+      <VBox>
+        <height>12</height>
+        <Text>
+          <style>title</style>
+          <text>연습용 드럼</text>
+        </Text>
+        <Text>
+          <style>composer</style>
+          <text>합성 악보</text>
+        </Text>
+      </VBox>
+      <Measure>
+        <voice>
+          <TimeSig><sigN>4</sigN><sigD>4</sigD></TimeSig>
+          <Tempo><tempo>2</tempo><text><sym>metNoteQuarterUp</sym> = 120</text></Tempo>
+          <RehearsalMark><text>Intro</text></RehearsalMark>
+          <Chord><durationType>quarter</durationType><Lyrics><text>킥</text></Lyrics><Note><pitch>36</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Lyrics><text>스네어</text></Lyrics><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <RehearsalMark><text>Verse</text></RehearsalMark>
+          <Chord><durationType>eighth</durationType><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>36</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Rest><durationType>eighth</durationType></Rest>
+          <Chord><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>42</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <Chord><grace>1</grace><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>36</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>45</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>47</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>51</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>49</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <RehearsalMark><text>Chorus</text></RehearsalMark>
+          <Tuplet><normalNotes>2</normalNotes><actualNotes>3</actualNotes><baseNote>eighth</baseNote></Tuplet>
+          <Chord><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
+          <endTuplet/>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note><Note><pitch>49</pitch></Note></Chord>
+          <Rest><durationType>quarter</durationType></Rest>
+          <Chord><durationType>eighth</durationType><Note><pitch>46</pitch></Note></Chord>
+          <Chord><durationType>eighth</durationType><Note><pitch>42</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note><Note><pitch>51</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>51</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>45</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>47</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <Chord><durationType>half</durationType><Note><pitch>49</pitch></Note><Note><pitch>36</pitch></Note></Chord>
+          <Chord><durationType>half</durationType><Note><pitch>38</pitch></Note><Note><pitch>42</pitch></Note></Chord>
+        </voice>
+      </Measure>
+      <Measure>
+        <voice>
+          <Chord><durationType>quarter</durationType><Note><pitch>36</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>42</pitch></Note></Chord>
+          <Chord><durationType>quarter</durationType><Note><pitch>49</pitch></Note></Chord>
+        </voice>
+      </Measure>
+    </Staff>
+  </Score>
+</museScore>
