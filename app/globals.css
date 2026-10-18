@@ -1,0 +1,105 @@
+:root {
+  --ink: #1c1915;
+  --paper: #f6f1e7;
+  --sheet: #fffaf2;
+  --line: #d9cbb8;
+  --accent: #c2410c;
+  --accent-ink: #fff7ed;
+  --muted: #6b6258;
+  --ok: #3f6212;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "WenQuanYi Micro Hei", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+a { color: inherit; }
+button, input, select {
+  font: inherit;
+}
+button, .button {
+  border: 1px solid var(--ink);
+  background: white;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  min-height: 44px;
+}
+button.primary, .button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.shell { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
+.topbar, .practice-head, .transport, .mix, .tools, .loop-row, .sync-form, .song-list, .card form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.topbar { justify-content: space-between; margin-bottom: 1.5rem; }
+h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
+.eyebrow, .meta, .hint, .muted { color: var(--muted); }
+.card, .stage, .banner {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+}
+.song-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.song-list a, .card { display: block; }
+.banner.error { border-color: var(--accent); }
+.limits { margin: 0.5rem 0 1rem; padding-left: 1.1rem; color: var(--ok); }
+.stage { position: relative; overflow: hidden; }
+.sheet { background: var(--sheet); border-radius: 12px; }
+.sheet-inner { position: relative; }
+.score-svg { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
+.measure {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0;
+}
+.measure.current { background: rgba(194, 65, 12, 0.12); }
+.measure.preview { background: rgba(28, 25, 21, 0.06); pointer-events: none; }
+.cursor {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 8rem;
+  font-weight: 700;
+  color: var(--accent);
+  pointer-events: none;
+}
+.mix label, .transport label, .tools label, .card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 9rem;
+}
+.check { flex-direction: row !important; align-items: center; }
+input[type="text"], input[type="number"], select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  min-height: 44px;
+  background: white;
+}
+@media (max-width: 720px) {
+  h1 { font-size: 1.4rem; }
+  .count { font-size: 5rem; }
+  .shell { padding: 0.8rem; }
+}
