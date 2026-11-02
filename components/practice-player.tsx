@@ -5,6 +5,8 @@ import { savePracticeState } from "@/app/songs/actions";
 import { placeCursor } from "@/lib/score/cursor";
 import {
   fitScoreWidth,
+  measuresOnSystem,
+  nextSystemPreview,
   PREVIEW_PEEK_SCALE,
   SCORE_BOTTOM_EXTRA,
   SCORE_PAD,
@@ -232,9 +234,9 @@ export function PracticePlayer({
   }
 
   const frame = layoutFrame(model, view.measureIndex, perScreen, width);
-  const { window, union, pad, unionWidth, unionHeight, fit, viewport } = frame;
+  const { window, systemIndexes, previewIndex, union, pad, fit, viewport } = frame;
   const previewBox =
-    window.preview !== null ? model.measuresGeom[window.preview] ?? null : null;
+    previewIndex !== null ? model.measuresGeom[previewIndex] ?? null : null;
   const measure = model.measuresGeom[view.measureIndex];
   const measureEnd = model.measuresGeom[view.measureIndex + 1]?.timeMs ?? model.durationMs;
   const cursor = measure
@@ -272,7 +274,8 @@ export function PracticePlayer({
         <div
           className="sheet"
           style={{
-            width: viewport.viewportWidth,
+            width: "100%",
+            maxWidth: viewport.viewportWidth,
             height: viewport.viewportHeight,
             overflowX: fit.scroll ? "auto" : "hidden",
             overflowY: viewport.innerHeight > viewport.viewportHeight ? "auto" : "hidden",
@@ -289,15 +292,18 @@ export function PracticePlayer({
               }}
               dangerouslySetInnerHTML={{ __html: model.svg }}
             />
-            {window.body.map((index) => {
+            {systemIndexes.map((index) => {
               const box = model.measuresGeom[index];
               if (!box) return null;
               const current = index === view.measureIndex;
+              const inWindow = window.body.includes(index);
               return (
                 <button
                   key={index}
                   type="button"
-                  className={current ? "measure current" : "measure"}
+                  className={
+                    current ? "measure current" : inWindow ? "measure" : "measure outside-window"
+                  }
                   style={boxStyle(box, union, pad, fit.scale)}
                   onClick={() => engineRef.current?.seekMeasure(index)}
                   aria-label={`${index + 1}마디로 이동`}
@@ -306,12 +312,17 @@ export function PracticePlayer({
             })}
             <div ref={cursorRef} className="cursor" hidden />
           </div>
-          {previewBox && window.preview !== null && (
-            <PreviewPeek svg={model.svg} box={previewBox} measureIndex={window.preview} />
-          )}
         </div>
+        {previewBox && previewIndex !== null && (
+          <div className="preview-strip">
+            <p className="preview-strip-label">다음 시스템 · {previewIndex + 1}마디</p>
+            <PreviewPeek svg={model.svg} box={previewBox} measureIndex={previewIndex} />
+          </div>
+        )}
         {view.counting && <div className="count">{view.countDisplay}</div>}
-        {fit.scroll && <p className="hint">이 구간은 음표가 겹치지 않도록 가로로 스크롤됩니다.</p>}
+        {fit.scroll && (
+          <p className="hint">이 시스템(한 줄)은 음표가 겹치지 않도록 가로로 스크롤됩니다.</p>
+        )}
       </div>
       <div className="transport">
         <button type="button" className="primary" onClick={() => void togglePlay()}>
@@ -581,8 +592,11 @@ function layoutFrame(
     model.measuresGeom.length,
     systemIds,
   );
-  // Fit the body measures only so the next-screen peek does not widen the main crop.
-  const shown = window.body
+  const systemId = systemIds[measureIndex] ?? 0;
+  // Show the whole engraved staff system (one horizontal line), not only the N-bar window.
+  const systemIndexes = measuresOnSystem(systemIds, systemId);
+  const previewIndex = nextSystemPreview(systemIds, systemId);
+  const shown = systemIndexes
     .map((index) => model.measuresGeom[index])
     .filter((item): item is LoadedScore["measuresGeom"][number] => Boolean(item));
   const union = shown.reduce(
@@ -612,7 +626,7 @@ function layoutFrame(
     containerWidth,
     fit.scroll,
   );
-  return { window, union, pad, unionWidth, unionHeight, fit, viewport };
+  return { window, systemIndexes, previewIndex, union, pad, unionWidth, unionHeight, fit, viewport };
 }
 
 function PreviewPeek({
@@ -634,7 +648,7 @@ function PreviewPeek({
     <div
       className="preview-peek"
       style={{ width, height }}
-      aria-label={`${measureIndex + 1}마디 미리보기`}
+      aria-label={`다음 시스템 ${measureIndex + 1}마디 미리보기`}
     >
       <div className="preview-peek-inner" style={{ width, height }}>
         <div

@@ -23,6 +23,26 @@ export function systemIdsFromYs(ys: number[], tolerance = 40): number[] {
   return ids;
 }
 
+/** All measure indexes that sit on the same engraved staff system. */
+export function measuresOnSystem(systemIds: number[], systemId: number): number[] {
+  const indexes: number[] = [];
+  for (let i = 0; i < systemIds.length; i += 1) {
+    if (systemIds[i] === systemId) indexes.push(i);
+  }
+  return indexes;
+}
+
+/** First measure of the next staff system after `systemId`, or null at the end. */
+export function nextSystemPreview(
+  systemIds: number[],
+  systemId: number,
+): number | null {
+  for (let i = 0; i < systemIds.length; i += 1) {
+    if (systemIds[i] > systemId) return i;
+  }
+  return null;
+}
+
 /**
  * Split one staff-system's measures into screen bodies.
  * A trailing chunk shorter than `perScreen` is merged into the previous chunk so

@@ -57,16 +57,24 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
 .sheet { position: relative; background: var(--sheet); border-radius: 12px; }
 .sheet-inner { position: relative; }
 .score-svg { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
+.preview-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  max-width: 100%;
+}
+.preview-strip-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: color-mix(in oklab, var(--ink) 65%, transparent);
+}
 .preview-peek {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 3;
+  position: relative;
   overflow: hidden;
   border-radius: 10px;
   border: 1px solid color-mix(in oklab, var(--ink) 14%, transparent);
   background: color-mix(in oklab, var(--sheet) 92%, white);
-  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 12%, transparent);
   pointer-events: none;
   opacity: 0.95;
 }
@@ -79,6 +87,7 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
   padding: 0;
 }
 .measure.current { background: rgba(194, 65, 12, 0.12); }
+.measure.outside-window { opacity: 0.72; }
 .measure.preview { background: rgba(28, 25, 21, 0.06); pointer-events: none; }
 .cursor {
   position: absolute;

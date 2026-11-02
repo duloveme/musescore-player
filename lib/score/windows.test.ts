@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   chunkSystemMeasures,
   fitScoreWidth,
+  measuresOnSystem,
+  nextSystemPreview,
   previewInSameSystem,
   sheetViewportSize,
   systemIdsFromYs,
@@ -44,6 +46,14 @@ test("system ids cluster measures that share a staff-system Y", () => {
     systemIdsFromYs([717, 717, 718, 1399, 1400, 1398]),
     [0, 0, 0, 1, 1, 1],
   );
+});
+
+test("measuresOnSystem returns every bar on the engraved line", () => {
+  const systems = [0, 0, 0, 0, 0, 1, 1, 1];
+  assert.deepEqual(measuresOnSystem(systems, 0), [0, 1, 2, 3, 4]);
+  assert.deepEqual(measuresOnSystem(systems, 1), [5, 6, 7]);
+  assert.equal(nextSystemPreview(systems, 0), 5);
+  assert.equal(nextSystemPreview(systems, 1), null);
 });
 
 test("system-aware windows do not cross MuseScore staff systems", () => {
