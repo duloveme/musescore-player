@@ -73,7 +73,6 @@
       </Measure>
       <Measure>
         <voice>
-          <Chord><grace>1</grace><durationType>eighth</durationType><Note><pitch>38</pitch></Note></Chord>
           <Chord><durationType>quarter</durationType><Note><pitch>38</pitch></Note><Note><pitch>36</pitch></Note></Chord>
           <Chord><durationType>quarter</durationType><Note><pitch>45</pitch></Note></Chord>
           <Chord><durationType>quarter</durationType><Note><pitch>47</pitch></Note></Chord>
