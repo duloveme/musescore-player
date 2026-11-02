@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { commitAsset, discardUpload } from "@/app/songs/actions";
-import { objectFileName, validateUpload } from "@/lib/files/validate";
-import { SONG_FILES_BUCKET } from "@/lib/db/types";
-import { createClient } from "@/lib/supabase/client";
+import { uploadSongAsset } from "@/lib/files/upload-asset";
 
 export function AssetUploader({ songId, userId }: { songId: string; userId: string }) {
   const router = useRouter();
@@ -15,30 +12,8 @@ export function AssetUploader({ songId, userId }: { songId: string; userId: stri
   async function onFile(file: File, kindLabel: string) {
     setError(null);
     try {
-      const checked = validateUpload(file);
-      const assetId = crypto.randomUUID();
-      const path = `${userId}/${songId}/${assetId}/${objectFileName(checked.extension)}`;
-      const supabase = createClient();
       setProgress(`${kindLabel} 올리는 중`);
-      const uploaded = await supabase.storage.from(SONG_FILES_BUCKET).upload(path, file, {
-        upsert: false,
-        contentType: file.type || "application/octet-stream",
-      });
-      if (uploaded.error) throw new Error(uploaded.error.message);
-      try {
-        await commitAsset({
-          songId,
-          assetId,
-          kind: checked.kind,
-          extension: checked.extension,
-          byteSize: file.size,
-          mime: file.type || "application/octet-stream",
-          originalName: file.name,
-        });
-      } catch (cause) {
-        await discardUpload(path);
-        throw cause;
-      }
+      await uploadSongAsset({ file, songId, userId });
       setProgress("저장했습니다.");
       router.refresh();
     } catch (cause) {

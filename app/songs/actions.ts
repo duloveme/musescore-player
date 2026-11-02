@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { objectFileName, validateUpload } from "@/lib/files/validate";
+import { absoluteOrigin } from "@/lib/auth/request-origin";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { SONG_FILES_BUCKET, type PracticeSettings } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +22,8 @@ export async function signInWithGoogle(formData: FormData) {
   const supabase = await createClient();
   if (!supabase) redirect("/login?error=config");
   const next = safeNextPath(String(formData.get("next") ?? "/songs"));
-  const origin = String(formData.get("origin") ?? "");
+  const origin = absoluteOrigin(String(formData.get("origin") ?? ""), await headers());
+  if (!origin) redirect("/login?error=oauth");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -37,7 +40,7 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function createSong(formData: FormData) {
+export async function createSongRecord(formData: FormData): Promise<{ songId: string; userId: string }> {
   const { supabase, userId } = await requireUser();
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("곡 이름이 필요합니다.");
@@ -58,7 +61,13 @@ export async function createSong(formData: FormData) {
   if (error || !data) throw new Error(error?.message ?? "곡을 저장하지 못했습니다.");
   await supabase.from("practice_settings").insert({ song_id: data.id, owner_id: userId });
   revalidatePath("/songs");
-  redirect(`/songs/${data.id}`);
+  return { songId: data.id, userId };
+}
+
+/** Form-action helper kept for older clients; prefer createSongRecord + upload. */
+export async function createSong(formData: FormData) {
+  const created = await createSongRecord(formData);
+  redirect(`/songs/${created.songId}`);
 }
 
 export async function updateSong(formData: FormData) {

@@ -30,14 +30,16 @@ Node는 클라우드 이미지의 22를 사용한다.
 
 1. 프로젝트를 만든다.
 2. Authentication > Providers > Google을 켜고, 위에서 복사한 클라이언트 ID와 보안 비밀번호를 넣는다.
-3. Authentication > URL Configuration
-   - Site URL: 운영 주소. 예: `https://musescore-player.vercel.app`
-   - Redirect URLs에 앱 콜백을 추가한다.
+3. Authentication > URL Configuration (CONFIGURATION 메뉴, Multi-Factor와 Attack Protection 사이)
+   - Site URL: 운영 주소. 예: `https://museplayer.snipkit.org`
+   - Redirect URLs에 앱 콜백을 추가한다. 빠지면 Site URL(기본 localhost)로 폴백되어 `/?code=`로 돌아온다.
      - `http://localhost:3000/auth/callback`
+     - `https://museplayer.snipkit.org/auth/callback`
      - Preview와 운영의 `https://<host>/auth/callback`
 4. Project Settings > API에서 Project URL과 publishable key를 복사한다.
-5. SQL Editor에서 `supabase/migrations/0001_library.sql` 전체를 한 번 실행한다. 이미 적용된 프로젝트에 다시 실행하면 정책 이름 충돌이 난다.
-6. Storage에 `song-files` private 버킷과 정책이 SQL에 포함되어 있다. 공개 버킷으로 바꾸지 않는다.
+5. SQL Editor에서 `supabase/migrations/0001_library.sql` 전체를 한 번 실행한다. Next/Vercel 배포는 SQL을 돌리지 않는다. 미적용이면 `public.songs` schema cache 오류가 난다. 이미 적용된 프로젝트에 다시 실행하면 정책 이름 충돌이 난다.
+6. 로그인 후에 SQL을 적용한 경우 `profiles`를 백필한다 (`auth.users` → `public.profiles` insert … on conflict do nothing).
+7. Storage에 `song-files` private 버킷과 정책이 SQL에 포함되어 있다. 공개 버킷으로 바꾸지 않는다. 곡 추가 화면에서 `.mscz`를 바로 올린다.
 
 앱 환경변수는 `.env.example` 두 개뿐이다.
 

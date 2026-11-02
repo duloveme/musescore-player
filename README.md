@@ -43,14 +43,31 @@ npm run dev
 
 ### 2. Supabase Dashboard
 
+새 대시보드에서는 Authentication 왼쪽 메뉴 **CONFIGURATION → URL Configuration**(Multi-Factor와 Attack Protection 사이)이다.
+
 1. Authentication → Providers → **Google**을 켜고 Client ID / Client secret을 붙여 넣는다.
 2. Authentication → URL Configuration
-   - **Site URL**: 운영 앱 주소 (예: `https://musescore-player.vercel.app`)
-   - **Redirect URLs**에 앱 콜백을 추가한다.
+   - **Site URL**: 운영 앱 주소 (예: `https://museplayer.snipkit.org`). 기본 `http://localhost:3000`이면 로그인 후 localhost로 폴백된다.
+   - **Redirect URLs**에 앱 콜백을 추가한다. allow list에 없으면 Site URL로 떨어지며 `/?code=…`처럼 보인다.
      - `http://localhost:3000/auth/callback`
+     - `https://museplayer.snipkit.org/auth/callback`
      - Preview·운영의 `https://<host>/auth/callback`
 3. Project Settings → API에서 Project URL과 publishable key를 복사한다.
-4. SQL Editor에서 `supabase/migrations/0001_library.sql`을 한 번 실행한다.
+4. **SQL Editor**에서 [`supabase/migrations/0001_library.sql`](supabase/migrations/0001_library.sql) 전체를 한 번 실행한다. Vercel 배포는 SQL을 실행하지 않는다. 미적용 시 곡 목록에 `Could not find the table 'public.songs'`가 난다.
+5. 로그인 **후에** SQL을 적용했다면 기존 사용자용 profile을 백필한다.
+
+```sql
+insert into public.profiles (id, display_name)
+select
+  u.id,
+  coalesce(
+    u.raw_user_meta_data->>'full_name',
+    u.raw_user_meta_data->>'name',
+    '연주자'
+  )
+from auth.users u
+on conflict (id) do nothing;
+```
 
 ### 3. 앱 환경변수
 
@@ -62,6 +79,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 ```
 
 `service_role` / secret key는 넣지 않는다. 값이 없으면 `/login`의「Google 계정으로 계속」버튼이 비활성이다.
+
+## 곡 추가
+
+`/songs` → **곡 추가**에서 곡 이름과 함께 **악보 `.mscz`(필수)**, 원곡 음원(선택)을 올린다. 저장 후 곡 상세에서 파일을 바꿀 수 있다. Storage 버킷 `song-files`는 위 SQL에 포함된다.
 
 ## 라이선스
 
