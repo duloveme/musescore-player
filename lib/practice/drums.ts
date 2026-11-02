@@ -84,16 +84,18 @@ export function playClick(
   accent: boolean,
   destination: AudioNode,
 ): () => void {
+  if (when < context.currentTime - 0.02) return () => {};
+  const startAt = Math.max(when, context.currentTime);
   const osc = context.createOscillator();
   const amp = context.createGain();
   osc.type = "square";
   osc.frequency.value = accent ? 1400 : 900;
-  amp.gain.setValueAtTime(accent ? 0.25 : 0.14, when);
-  amp.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+  amp.gain.setValueAtTime(accent ? 0.25 : 0.14, startAt);
+  amp.gain.exponentialRampToValueAtTime(0.001, startAt + 0.05);
   osc.connect(amp);
   amp.connect(destination);
-  osc.start(when);
-  osc.stop(when + 0.06);
+  osc.start(startAt);
+  osc.stop(startAt + 0.06);
   return () => {
     try {
       osc.stop();

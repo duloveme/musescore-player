@@ -156,11 +156,11 @@ export class PracticeEngine {
     if (!this.playing && !this.counting) return;
     const now = this.context.currentTime;
     if (this.counting && now >= this.playbackWhen) {
+      // Song audio/drums were already scheduled on the AudioContext clock in restartAt.
+      // Only flip flags here so a late animation frame cannot restart audio mid-measure.
       this.counting = false;
       this.playing = true;
-      this.originScoreMs = this.scoreMs;
-      this.originWhen = this.playbackWhen;
-      this.startSong(this.scoreMs, this.playbackWhen);
+      this.applyMix();
     }
     if (this.playing) {
       const scoreMs = this.currentScoreMs();
@@ -172,6 +172,9 @@ export class PracticeEngine {
       }
       this.scheduleAhead(scoreMs);
       this.followSong(scoreMs);
+    } else if (this.counting) {
+      // Keep the first notes queued while the count-in runs.
+      this.scheduleAhead(this.scoreMs);
     }
   }
 
@@ -206,7 +209,7 @@ export class PracticeEngine {
   private restartAt(scoreMs: number, withCountIn: boolean): void {
     this.hardStop();
     this.scoreMs = scoreMs;
-    const now = this.context.currentTime + 0.05;
+    const now = this.context.currentTime + 0.08;
     if (withCountIn && this.countIn > 0) {
       const secondsPerBeat = this.secondsPerBeat(scoreMs);
       const scheduled = countInSchedule({
@@ -220,21 +223,29 @@ export class PracticeEngine {
       this.playbackWhen = scheduled.playbackContextTime;
       this.counting = true;
       this.playing = false;
+      // Align the score clock to the future downbeat before scheduling audio.
+      this.originScoreMs = scoreMs;
+      this.originWhen = this.playbackWhen;
+      this.applyMix();
       for (const event of scheduled.events) {
         this.stops.push(playClick(this.context, event.when, event.accent, this.countGain));
       }
+      // Schedule the song on the audio clock so rAF jitter cannot delay the first bar.
+      this.startSong(scoreMs, this.playbackWhen);
+      this.scheduleAhead(scoreMs);
       return;
     }
     this.counting = false;
     this.playing = true;
     this.originScoreMs = scoreMs;
     this.originWhen = now;
+    this.applyMix();
     this.startSong(scoreMs, now);
     this.scheduleAhead(scoreMs);
   }
 
   private scheduleAhead(scoreMs: number): void {
-    const horizon = scoreMs + this.rate * 250;
+    const horizon = scoreMs + this.rate * 1200;
     if (this.mix.drums) {
       for (const note of this.model.notes) {
         if (note.timeMs < scoreMs || note.timeMs > horizon) continue;
@@ -286,7 +297,11 @@ export class PracticeEngine {
       this.stretch = "unavailable";
       source.connect(this.originalGain);
     }
-    source.start(when, audioSec);
+    const startAt = Math.max(when, this.context.currentTime);
+    const lateSec = Math.max(0, startAt - when);
+    const offset = audioSec + lateSec * playbackRate;
+    if (offset >= this.audio.duration - 0.01) return;
+    source.start(startAt, offset);
     this.source = source;
     this.audioAnchorScore = scoreMs;
     this.audioSlope = slope;
@@ -344,6 +359,10 @@ export class PracticeEngine {
   }
 
   private secondsPerBeat(scoreMs: number): number {
+    // Prefer written tempo so count-in length matches the BPM shown in the UI.
+    if (this.model.tempoBpm > 0) {
+      return 60 / this.model.tempoBpm;
+    }
     const index = this.measureIndex(scoreMs);
     const start = this.model.measuresGeom[index]?.timeMs ?? 0;
     const end = this.model.measuresGeom[index + 1]?.timeMs ?? this.model.durationMs;
@@ -354,6 +373,7 @@ export class PracticeEngine {
     this.originalGain.gain.value = this.mix.original ? this.mix.originalVolume : 0;
     this.drumGain.gain.value = this.mix.drums ? this.mix.drumVolume : 0;
     this.clickGain.gain.value = this.mix.metronome ? this.mix.metronomeVolume : 0;
-    this.countGain.gain.value = this.countIn > 0 ? this.mix.countInVolume : 0;
+    this.countGain.gain.value =
+      this.counting && this.countIn > 0 ? this.mix.countInVolume : 0;
   }
 }

@@ -29,13 +29,13 @@ test("the last screen has no preview measure", () => {
 });
 
 test("dense measures scroll instead of scaling notes below the floor", () => {
-  const comfortable = fitScoreWidth(800, 600, 0.55);
+  const comfortable = fitScoreWidth(800, 600, 0.5);
   assert.equal(comfortable.scroll, false);
-  assert.ok(comfortable.scale >= 0.55);
+  assert.ok(comfortable.scale >= 0.5);
 
-  const dense = fitScoreWidth(2000, 400, 0.55);
+  const dense = fitScoreWidth(2000, 400, 0.5);
   assert.equal(dense.scroll, true);
-  assert.equal(dense.scale, 0.55);
+  assert.equal(dense.scale, 0.5);
 });
 
 test("system ids cluster measures that share a staff-system Y", () => {
@@ -74,18 +74,25 @@ test("preview is omitted from the crop when it sits on the next staff system", (
 });
 
 test("scroll viewport stays at container width while inner keeps content width", () => {
-  const fit = fitScoreWidth(2000, 400, 0.55);
+  const fit = fitScoreWidth(2000, 400, 0.5);
   assert.equal(fit.scroll, true);
   const viewport = sheetViewportSize(2000, 300, fit.scale, 400, fit.scroll);
   assert.ok(viewport.viewportWidth <= 400);
   assert.ok(viewport.innerWidth > viewport.viewportWidth);
-  assert.equal(viewport.innerWidth, 2000 * 0.55);
+  assert.equal(viewport.innerWidth, 2000 * 0.5);
 });
 
 test("non-scroll viewport matches the scaled content width", () => {
-  const fit = fitScoreWidth(800, 600, 0.55);
+  const fit = fitScoreWidth(800, 600, 0.5);
   assert.equal(fit.scroll, false);
   const viewport = sheetViewportSize(800, 300, fit.scale, 600, fit.scroll);
   assert.equal(viewport.viewportWidth, viewport.innerWidth);
   assert.ok(viewport.viewportWidth <= 600 + 1e-9);
+});
+
+test("viewport height is at least the scaled crop and keeps spare room", () => {
+  const viewport = sheetViewportSize(800, 200, 1, 800, false, 640);
+  assert.equal(viewport.innerHeight, 200);
+  assert.ok(viewport.viewportHeight >= viewport.innerHeight);
+  assert.ok(viewport.viewportHeight <= 640);
 });

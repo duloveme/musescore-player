@@ -5,7 +5,10 @@ import { savePracticeState } from "@/app/songs/actions";
 import { placeCursor } from "@/lib/score/cursor";
 import {
   fitScoreWidth,
-  previewInSameSystem,
+  PREVIEW_PEEK_SCALE,
+  SCORE_BOTTOM_EXTRA,
+  SCORE_PAD,
+  SCORE_TOP_EXTRA,
   sheetViewportSize,
   systemIdsFromYs,
   windowForMeasure,
@@ -229,7 +232,9 @@ export function PracticePlayer({
   }
 
   const frame = layoutFrame(model, view.measureIndex, perScreen, width);
-  const { window, visiblePreview, union, pad, unionWidth, unionHeight, fit, viewport } = frame;
+  const { window, union, pad, unionWidth, unionHeight, fit, viewport } = frame;
+  const previewBox =
+    window.preview !== null ? model.measuresGeom[window.preview] ?? null : null;
   const measure = model.measuresGeom[view.measureIndex];
   const measureEnd = model.measuresGeom[view.measureIndex + 1]?.timeMs ?? model.durationMs;
   const cursor = measure
@@ -299,14 +304,11 @@ export function PracticePlayer({
                 />
               );
             })}
-            {visiblePreview !== null && model.measuresGeom[visiblePreview] && (
-              <div
-                className="measure preview"
-                style={boxStyle(model.measuresGeom[visiblePreview], union, pad, fit.scale)}
-              />
-            )}
             <div ref={cursorRef} className="cursor" hidden />
           </div>
+          {previewBox && window.preview !== null && (
+            <PreviewPeek svg={model.svg} box={previewBox} measureIndex={window.preview} />
+          )}
         </div>
         {view.counting && <div className="count">{view.countDisplay}</div>}
         {fit.scroll && <p className="hint">이 구간은 음표가 겹치지 않도록 가로로 스크롤됩니다.</p>}
@@ -579,8 +581,8 @@ function layoutFrame(
     model.measuresGeom.length,
     systemIds,
   );
-  const visiblePreview = previewInSameSystem(window.preview, window.body, systemIds);
-  const shown = [...window.body, ...(visiblePreview === null ? [] : [visiblePreview])]
+  // Fit the body measures only so the next-screen peek does not widen the main crop.
+  const shown = window.body
     .map((index) => model.measuresGeom[index])
     .filter((item): item is LoadedScore["measuresGeom"][number] => Boolean(item));
   const union = shown.reduce(
@@ -590,9 +592,15 @@ function layoutFrame(
       right: Math.max(box.right, item.x + item.sx),
       bottom: Math.max(box.bottom, item.y + item.sy),
     }),
-    { x: shown[0]?.x ?? 0, y: (shown[0]?.y ?? 0) - 70, right: 0, bottom: 0 },
+    {
+      x: shown[0]?.x ?? 0,
+      y: (shown[0]?.y ?? 0) - SCORE_TOP_EXTRA,
+      right: shown[0] ? shown[0].x + shown[0].sx : 0,
+      bottom: shown[0] ? shown[0].y + shown[0].sy : 0,
+    },
   );
-  const pad = 36;
+  union.bottom += SCORE_BOTTOM_EXTRA;
+  const pad = SCORE_PAD;
   const unionWidth = Math.max(1, union.right - union.x + pad * 2);
   const unionHeight = Math.max(1, union.bottom - union.y + pad * 2);
   const containerWidth = Math.max(320, width - 8);
@@ -604,7 +612,41 @@ function layoutFrame(
     containerWidth,
     fit.scroll,
   );
-  return { window, visiblePreview, union, pad, unionWidth, unionHeight, fit, viewport };
+  return { window, union, pad, unionWidth, unionHeight, fit, viewport };
+}
+
+function PreviewPeek({
+  svg,
+  box,
+  measureIndex,
+}: {
+  svg: string;
+  box: { x: number; y: number; sx: number; sy: number };
+  measureIndex: number;
+}) {
+  const scale = PREVIEW_PEEK_SCALE;
+  const pad = 18;
+  const topExtra = 72;
+  const bottomExtra = 28;
+  const width = (box.sx + pad * 2) * scale;
+  const height = (box.sy + topExtra + bottomExtra + pad * 2) * scale;
+  return (
+    <div
+      className="preview-peek"
+      style={{ width, height }}
+      aria-label={`${measureIndex + 1}마디 미리보기`}
+    >
+      <div className="preview-peek-inner" style={{ width, height }}>
+        <div
+          className="score-svg"
+          style={{
+            transform: `translate(${(pad - box.x) * scale}px, ${(pad + topExtra - box.y) * scale}px) scale(${scale})`,
+          }}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function cursorPlacement(

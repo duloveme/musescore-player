@@ -54,9 +54,23 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
 .banner.error { border-color: var(--accent); }
 .limits { margin: 0.5rem 0 1rem; padding-left: 1.1rem; color: var(--ok); }
 .stage { position: relative; overflow: hidden; }
-.sheet { background: var(--sheet); border-radius: 12px; }
+.sheet { position: relative; background: var(--sheet); border-radius: 12px; }
 .sheet-inner { position: relative; }
 .score-svg { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
+.preview-peek {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--ink) 14%, transparent);
+  background: color-mix(in oklab, var(--sheet) 92%, white);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 12%, transparent);
+  pointer-events: none;
+  opacity: 0.95;
+}
+.preview-peek-inner { position: relative; overflow: hidden; }
 .measure {
   position: absolute;
   border: 0;

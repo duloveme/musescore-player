@@ -102,7 +102,7 @@ export type FitDecision = {
 export function fitScoreWidth(
   unionWidthPx: number,
   containerPx: number,
-  minScale = 0.55,
+  minScale = 0.5,
 ): FitDecision {
   if (unionWidthPx <= 0 || containerPx <= 0) {
     return { scale: 1, scroll: false };
@@ -131,11 +131,20 @@ export function sheetViewportSize(
   scale: number,
   containerWidth: number,
   scroll: boolean,
-  maxHeight = 560,
+  maxHeight = 640,
 ): SheetViewport {
   const innerWidth = Math.max(1, unionWidth * scale);
   const innerHeight = Math.max(1, unionHeight * scale);
   const viewportWidth = scroll ? Math.max(1, containerWidth) : innerWidth;
-  const viewportHeight = Math.min(maxHeight, innerHeight);
+  // Keep a little spare height so section labels and the corner peek do not feel cramped.
+  const viewportHeight = Math.min(maxHeight, Math.max(innerHeight, Math.min(innerHeight + 40, maxHeight)));
   return { viewportWidth, viewportHeight, innerWidth, innerHeight };
 }
+
+/** Extra crop above/below measure boxes so section labels and low notes are not clipped. */
+export const SCORE_TOP_EXTRA = 130;
+export const SCORE_BOTTOM_EXTRA = 56;
+export const SCORE_PAD = 48;
+
+/** Small peek of the next window's first measure in the upper-right corner. */
+export const PREVIEW_PEEK_SCALE = 0.42;
