@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { savePracticeState } from "@/app/songs/actions";
 import { placeCursor } from "@/lib/score/cursor";
-import { fitScoreWidth, windowForMeasure, type MeasuresPerScreen } from "@/lib/score/windows";
+import {
+  fitScoreWidth,
+  previewInSameSystem,
+  sheetViewportSize,
+  systemIdsFromYs,
+  windowForMeasure,
+  type MeasuresPerScreen,
+} from "@/lib/score/windows";
 import { PracticeEngine, type EngineView, type MixState } from "@/lib/practice/engine";
 import { loadScoreFile, type LoadedScore } from "@/lib/practice/load-score";
 import { requestScreenWakeLock } from "@/lib/platform/wake-lock";
@@ -222,7 +229,7 @@ export function PracticePlayer({
   }
 
   const frame = layoutFrame(model, view.measureIndex, perScreen, width);
-  const { window, union, pad, unionWidth, unionHeight, fit } = frame;
+  const { window, visiblePreview, union, pad, unionWidth, unionHeight, fit, viewport } = frame;
   const measure = model.measuresGeom[view.measureIndex];
   const measureEnd = model.measuresGeom[view.measureIndex + 1]?.timeMs ?? model.durationMs;
   const cursor = measure
@@ -260,14 +267,15 @@ export function PracticePlayer({
         <div
           className="sheet"
           style={{
-            width: unionWidth * fit.scale,
-            height: Math.min(560, unionHeight * fit.scale),
-            overflow: fit.scroll ? "auto" : "hidden",
+            width: viewport.viewportWidth,
+            height: viewport.viewportHeight,
+            overflowX: fit.scroll ? "auto" : "hidden",
+            overflowY: viewport.innerHeight > viewport.viewportHeight ? "auto" : "hidden",
           }}
         >
           <div
             className="sheet-inner"
-            style={{ width: unionWidth * fit.scale, height: unionHeight * fit.scale }}
+            style={{ width: viewport.innerWidth, height: viewport.innerHeight }}
           >
             <div
               className="score-svg"
@@ -291,10 +299,10 @@ export function PracticePlayer({
                 />
               );
             })}
-            {window.preview !== null && model.measuresGeom[window.preview] && (
+            {visiblePreview !== null && model.measuresGeom[visiblePreview] && (
               <div
                 className="measure preview"
-                style={boxStyle(model.measuresGeom[window.preview], union, pad, fit.scale)}
+                style={boxStyle(model.measuresGeom[visiblePreview], union, pad, fit.scale)}
               />
             )}
             <div ref={cursorRef} className="cursor" hidden />
@@ -564,8 +572,15 @@ function layoutFrame(
   perScreen: MeasuresPerScreen,
   width: number,
 ) {
-  const window = windowForMeasure(measureIndex, perScreen, model.measuresGeom.length);
-  const shown = [...window.body, ...(window.preview === null ? [] : [window.preview])]
+  const systemIds = systemIdsFromYs(model.measuresGeom.map((box) => box.y));
+  const window = windowForMeasure(
+    measureIndex,
+    perScreen,
+    model.measuresGeom.length,
+    systemIds,
+  );
+  const visiblePreview = previewInSameSystem(window.preview, window.body, systemIds);
+  const shown = [...window.body, ...(visiblePreview === null ? [] : [visiblePreview])]
     .map((index) => model.measuresGeom[index])
     .filter((item): item is LoadedScore["measuresGeom"][number] => Boolean(item));
   const union = shown.reduce(
@@ -580,8 +595,16 @@ function layoutFrame(
   const pad = 36;
   const unionWidth = Math.max(1, union.right - union.x + pad * 2);
   const unionHeight = Math.max(1, union.bottom - union.y + pad * 2);
-  const fit = fitScoreWidth(unionWidth, Math.max(320, width - 8));
-  return { window, union, pad, unionWidth, unionHeight, fit };
+  const containerWidth = Math.max(320, width - 8);
+  const fit = fitScoreWidth(unionWidth, containerWidth);
+  const viewport = sheetViewportSize(
+    unionWidth,
+    unionHeight,
+    fit.scale,
+    containerWidth,
+    fit.scroll,
+  );
+  return { window, visiblePreview, union, pad, unionWidth, unionHeight, fit, viewport };
 }
 
 function cursorPlacement(
