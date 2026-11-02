@@ -24,9 +24,55 @@ export function systemIdsFromYs(ys: number[], tolerance = 40): number[] {
 }
 
 /**
+ * Split one staff-system's measures into screen bodies.
+ * A trailing chunk shorter than `perScreen` is merged into the previous chunk so
+ * the next section never opens on a single oversized leftover bar.
+ */
+export function chunkSystemMeasures(
+  measures: number[],
+  perScreen: MeasuresPerScreen,
+): number[][] {
+  if (measures.length === 0) return [];
+  const chunks: number[][] = [];
+  for (let i = 0; i < measures.length; i += perScreen) {
+    chunks.push(measures.slice(i, i + perScreen));
+  }
+  if (chunks.length >= 2 && chunks[chunks.length - 1].length < perScreen) {
+    const orphan = chunks.pop()!;
+    chunks[chunks.length - 1] = [...chunks[chunks.length - 1], ...orphan];
+  }
+  return chunks;
+}
+
+function systemWindows(
+  totalMeasures: number,
+  perScreen: MeasuresPerScreen,
+  systems: number[],
+): number[][] {
+  const groups = new Map<number, number[]>();
+  const order: number[] = [];
+  for (let i = 0; i < totalMeasures; i += 1) {
+    const systemId = systems[i];
+    let group = groups.get(systemId);
+    if (!group) {
+      group = [];
+      groups.set(systemId, group);
+      order.push(systemId);
+    }
+    group.push(i);
+  }
+  const windows: number[][] = [];
+  for (const systemId of order) {
+    windows.push(...chunkSystemMeasures(groups.get(systemId) ?? [], perScreen));
+  }
+  return windows;
+}
+
+/**
  * 0-based measure index. Preview is the first measure of the next screen and is not part of playback.
  * When `systemIds` is provided, a window never crosses a MuseScore staff-system boundary
- * (unless a single system itself is longer than `perScreen`, in which case it is split).
+ * (unless a single system itself is longer than `perScreen`, in which case it is split,
+ * with orphan leftovers merged into the previous screen on that system).
  */
 export function windowForMeasure(
   measureIndex: number,
@@ -55,15 +101,8 @@ export function windowForMeasure(
     };
   }
 
-  let start = 0;
-  while (start < totalMeasures) {
-    const systemId = systems[start];
-    const body: number[] = [];
-    for (let i = start; i < totalMeasures && body.length < perScreen; i += 1) {
-      if (systems[i] !== systemId) break;
-      body.push(i);
-    }
-    if (body.length === 0) break;
+  const windows = systemWindows(totalMeasures, perScreen, systems);
+  for (const body of windows) {
     if (index >= body[0] && index <= body[body.length - 1]) {
       const previewIndex = body[body.length - 1] + 1;
       return {
@@ -72,7 +111,6 @@ export function windowForMeasure(
         preview: previewIndex < totalMeasures ? previewIndex : null,
       };
     }
-    start = body[body.length - 1] + 1;
   }
 
   return { start: index, body: [index], preview: null };

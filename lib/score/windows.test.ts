@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  chunkSystemMeasures,
   fitScoreWidth,
   previewInSameSystem,
   sheetViewportSize,
@@ -50,27 +51,37 @@ test("system-aware windows do not cross MuseScore staff systems", () => {
   const systems = systemIdsFromYs([717, 717, 717, 717, 717, 1399, 1399, 1399]);
   assert.deepEqual(systems, [0, 0, 0, 0, 0, 1, 1, 1]);
 
+  // Orphan bar 4 merges into the first screen so the next section does not open alone.
   const first = windowForMeasure(0, 4, 8, systems);
-  assert.deepEqual(first.body, [0, 1, 2, 3]);
-  assert.equal(first.preview, 4);
+  assert.deepEqual(first.body, [0, 1, 2, 3, 4]);
+  assert.equal(first.preview, 5);
 
-  const leftover = windowForMeasure(4, 4, 8, systems);
-  assert.deepEqual(leftover.body, [4]);
-  assert.equal(leftover.preview, 5);
+  const sameThroughOrphan = windowForMeasure(4, 4, 8, systems);
+  assert.deepEqual(sameThroughOrphan.body, [0, 1, 2, 3, 4]);
+  assert.equal(sameThroughOrphan.preview, 5);
 
   const secondSystem = windowForMeasure(5, 4, 8, systems);
   assert.deepEqual(secondSystem.body, [5, 6, 7]);
   assert.equal(secondSystem.preview, null);
 });
 
+test("orphan leftovers on a staff system merge into the previous screen", () => {
+  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4], 4), [[0, 1, 2, 3, 4]]);
+  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4, 5, 6, 7], 4), [
+    [0, 1, 2, 3],
+    [4, 5, 6, 7],
+  ]);
+  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4, 5, 6, 7, 8], 4), [
+    [0, 1, 2, 3],
+    [4, 5, 6, 7, 8],
+  ]);
+});
+
 test("preview is omitted from the crop when it sits on the next staff system", () => {
   const systems = [0, 0, 0, 0, 0, 1, 1, 1];
-  const leftover = windowForMeasure(4, 4, 8, systems);
-  assert.equal(leftover.preview, 5);
-  assert.equal(previewInSameSystem(leftover.preview, leftover.body, systems), null);
-
   const first = windowForMeasure(0, 4, 8, systems);
-  assert.equal(previewInSameSystem(first.preview, first.body, systems), 4);
+  assert.equal(first.preview, 5);
+  assert.equal(previewInSameSystem(first.preview, first.body, systems), null);
 });
 
 test("scroll viewport stays at container width while inner keeps content width", () => {
