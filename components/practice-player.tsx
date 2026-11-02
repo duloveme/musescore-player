@@ -6,7 +6,9 @@ import { placeCursor } from "@/lib/score/cursor";
 import {
   fitScoreWidth,
   measuresOnSystem,
+  measuresPerScreenFromCount,
   nextSystemPreview,
+  preferredSystemViewportWidth,
   PREVIEW_PEEK_SCALE,
   SCORE_BOTTOM_EXTRA,
   SCORE_PAD,
@@ -14,7 +16,6 @@ import {
   sheetViewportSize,
   systemIdsFromYs,
   windowForMeasure,
-  type MeasuresPerScreen,
 } from "@/lib/score/windows";
 import { PracticeEngine, type EngineView, type MixState } from "@/lib/practice/engine";
 import { loadScoreFile, type LoadedScore } from "@/lib/practice/load-score";
@@ -53,9 +54,6 @@ export function PracticePlayer({
   const [model, setModel] = useState<LoadedScore | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<EngineView>(EMPTY_VIEW);
-  const [perScreen, setPerScreen] = useState<MeasuresPerScreen>(
-    initialSettings?.measures_per_screen ?? 4,
-  );
   const [mix, setMix] = useState<MixState>({
     original: initialSettings?.original_enabled ?? true,
     drums: initialSettings?.drum_enabled ?? true,
@@ -82,7 +80,6 @@ export function PracticePlayer({
   const cursorRef = useRef<HTMLDivElement | null>(null);
   const paintRef = useRef({
     model: null as LoadedScore | null,
-    perScreen: 4 as MeasuresPerScreen,
     visualOffset: 0,
     width: 800,
   });
@@ -164,7 +161,7 @@ export function PracticePlayer({
         const cursor = cursorRef.current;
         const paint = paintRef.current;
         if (cursor && paint.model) {
-          const placed = cursorPlacement(paint.model, next, paint.perScreen, paint.visualOffset, paint.width);
+          const placed = cursorPlacement(paint.model, next, paint.visualOffset, paint.width);
           cursor.hidden = !placed;
           if (placed) cursor.style.left = `${placed.left}px`;
         }
@@ -223,7 +220,7 @@ export function PracticePlayer({
   }
 
   useEffect(() => {
-    paintRef.current = { model, perScreen, visualOffset, width };
+    paintRef.current = { model, visualOffset, width };
   });
 
   if (error) {
@@ -233,7 +230,7 @@ export function PracticePlayer({
     return <p className="banner">악보를 읽고 있습니다.</p>;
   }
 
-  const frame = layoutFrame(model, view.measureIndex, perScreen, width);
+  const frame = layoutFrame(model, view.measureIndex, width);
   const { window, systemIndexes, previewIndex, union, pad, fit, viewport } = frame;
   const previewBox =
     previewIndex !== null ? model.measuresGeom[previewIndex] ?? null : null;
@@ -274,10 +271,9 @@ export function PracticePlayer({
         <div
           className="sheet"
           style={{
-            width: "100%",
-            maxWidth: viewport.viewportWidth,
+            width: viewport.viewportWidth,
             height: viewport.viewportHeight,
-            overflowX: fit.scroll ? "auto" : "hidden",
+            overflowX: "hidden",
             overflowY: viewport.innerHeight > viewport.viewportHeight ? "auto" : "hidden",
           }}
         >
@@ -321,8 +317,9 @@ export function PracticePlayer({
         )}
         {view.counting && <div className="count">{view.countDisplay}</div>}
         {fit.scroll && (
-          <p className="hint">이 시스템(한 줄)은 음표가 겹치지 않도록 가로로 스크롤됩니다.</p>
+          <p className="hint">이 시스템(한 줄)이 넓어 가로로 스크롤할 수 있습니다.</p>
         )}
+        <p className="hint">화면은 MuseScore 시스템(한 줄) 단위입니다 · 지금 {systemIndexes.length}마디</p>
       </div>
       <div className="transport">
         <button type="button" className="primary" onClick={() => void togglePlay()}>
@@ -351,18 +348,6 @@ export function PracticePlayer({
               setView(engineRef.current?.view() ?? { ...view, rate });
             }}
           />
-        </label>
-        <label>
-          화면 마디
-          <select
-            name="measures-per-screen"
-            value={perScreen}
-            onChange={(event) => setPerScreen(Number(event.target.value) as MeasuresPerScreen)}
-          >
-            <option value={2}>2마디</option>
-            <option value={4}>4마디</option>
-            <option value={8}>8마디</option>
-          </select>
         </label>
         <label>
           카운트인
@@ -542,7 +527,7 @@ export function PracticePlayer({
                 metronomeEnabled: mix.metronome,
                 countIn: String(countIn) as "0" | "1" | "2",
                 countInEveryLoop: countEveryLoop,
-                measuresPerScreen: perScreen,
+                measuresPerScreen: measuresPerScreenFromCount(systemIndexes.length),
                 lastMeasure: view.measureIndex,
                 visualOffsetMs: visualOffset,
                 sync: sync.map((point) => ({ scoreMs: point.scoreMs, audioSec: point.audioSec })),
@@ -582,18 +567,11 @@ function countInFromSettings(value: string | undefined): 0 | 1 | 2 {
 function layoutFrame(
   model: LoadedScore,
   measureIndex: number,
-  perScreen: MeasuresPerScreen,
   width: number,
 ) {
   const systemIds = systemIdsFromYs(model.measuresGeom.map((box) => box.y));
-  const window = windowForMeasure(
-    measureIndex,
-    perScreen,
-    model.measuresGeom.length,
-    systemIds,
-  );
+  const window = windowForMeasure(measureIndex, 4, model.measuresGeom.length, systemIds);
   const systemId = systemIds[measureIndex] ?? 0;
-  // Show the whole engraved staff system (one horizontal line), not only the N-bar window.
   const systemIndexes = measuresOnSystem(systemIds, systemId);
   const previewIndex = nextSystemPreview(systemIds, systemId);
   const shown = systemIndexes
@@ -618,12 +596,14 @@ function layoutFrame(
   const unionWidth = Math.max(1, union.right - union.x + pad * 2);
   const unionHeight = Math.max(1, union.bottom - union.y + pad * 2);
   const containerWidth = Math.max(320, width - 8);
-  const fit = fitScoreWidth(unionWidth, containerWidth);
+  // Widen past the stage when needed so a full system stays readable without clipping.
+  const targetWidth = preferredSystemViewportWidth(unionWidth, containerWidth, 0.55);
+  const fit = fitScoreWidth(unionWidth, targetWidth, 0.42);
   const viewport = sheetViewportSize(
     unionWidth,
     unionHeight,
     fit.scale,
-    containerWidth,
+    targetWidth,
     fit.scroll,
   );
   return { window, systemIndexes, previewIndex, union, pad, unionWidth, unionHeight, fit, viewport };
@@ -666,11 +646,10 @@ function PreviewPeek({
 function cursorPlacement(
   model: LoadedScore,
   view: EngineView,
-  perScreen: MeasuresPerScreen,
   visualOffset: number,
   width: number,
 ): { left: number } | null {
-  const frame = layoutFrame(model, view.measureIndex, perScreen, width);
+  const frame = layoutFrame(model, view.measureIndex, width);
   const measure = model.measuresGeom[view.measureIndex];
   if (!measure) return null;
   const measureEnd = model.measuresGeom[view.measureIndex + 1]?.timeMs ?? model.durationMs;

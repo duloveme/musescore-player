@@ -34,6 +34,7 @@ button.primary, .button.primary {
   border-color: var(--accent);
 }
 .shell { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
+.shell:has(.practice) { max-width: min(96vw, 1600px); }
 .topbar, .practice-head, .transport, .mix, .tools, .loop-row, .sync-form, .song-list, .card form {
   display: flex;
   flex-wrap: wrap;
@@ -53,7 +54,12 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
 .song-list a, .card { display: block; }
 .banner.error { border-color: var(--accent); }
 .limits { margin: 0.5rem 0 1rem; padding-left: 1.1rem; color: var(--ok); }
-.stage { position: relative; overflow: hidden; }
+.stage {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
 .sheet { position: relative; background: var(--sheet); border-radius: 12px; }
 .sheet-inner { position: relative; }
 .score-svg { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }

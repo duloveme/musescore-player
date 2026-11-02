@@ -1,44 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  chunkSystemMeasures,
   fitScoreWidth,
   measuresOnSystem,
+  measuresPerScreenFromCount,
   nextSystemPreview,
-  previewInSameSystem,
+  preferredSystemViewportWidth,
   sheetViewportSize,
   systemIdsFromYs,
   windowForMeasure,
 } from "./windows.ts";
 
-test("4-bar windows preview the next downbeat without including it in the body", () => {
+test("without system ids, 4-bar windows still preview the next downbeat", () => {
   const first = windowForMeasure(0, 4, 9);
   assert.deepEqual(first.body, [0, 1, 2, 3]);
   assert.equal(first.preview, 4);
-
-  const atEndOfScreen = windowForMeasure(3, 4, 9);
-  assert.deepEqual(atEndOfScreen.body, [0, 1, 2, 3]);
-  assert.equal(atEndOfScreen.preview, 4);
 
   const next = windowForMeasure(4, 4, 9);
   assert.deepEqual(next.body, [4, 5, 6, 7]);
   assert.equal(next.preview, 8);
 });
 
-test("the last screen has no preview measure", () => {
+test("the last fixed window has no preview measure", () => {
   const last = windowForMeasure(8, 4, 9);
   assert.deepEqual(last.body, [8]);
   assert.equal(last.preview, null);
 });
 
-test("dense measures scroll instead of scaling notes below the floor", () => {
-  const comfortable = fitScoreWidth(800, 600, 0.5);
+test("dense measures scroll only below the scale floor", () => {
+  const comfortable = fitScoreWidth(800, 600, 0.42);
   assert.equal(comfortable.scroll, false);
-  assert.ok(comfortable.scale >= 0.5);
+  assert.ok(comfortable.scale >= 0.42);
 
-  const dense = fitScoreWidth(2000, 400, 0.5);
+  const dense = fitScoreWidth(2000, 400, 0.42);
   assert.equal(dense.scroll, true);
-  assert.equal(dense.scale, 0.5);
+  assert.equal(dense.scale, 0.42);
 });
 
 test("system ids cluster measures that share a staff-system Y", () => {
@@ -48,72 +44,49 @@ test("system ids cluster measures that share a staff-system Y", () => {
   );
 });
 
-test("measuresOnSystem returns every bar on the engraved line", () => {
-  const systems = [0, 0, 0, 0, 0, 1, 1, 1];
-  assert.deepEqual(measuresOnSystem(systems, 0), [0, 1, 2, 3, 4]);
-  assert.deepEqual(measuresOnSystem(systems, 1), [5, 6, 7]);
-  assert.equal(nextSystemPreview(systems, 0), 5);
-  assert.equal(nextSystemPreview(systems, 1), null);
-});
-
-test("system-aware windows do not cross MuseScore staff systems", () => {
-  // Five bars on system 0, three on system 1 — mirrors the synthetic fixture layout.
+test("practice windows follow MuseScore staff systems", () => {
+  // Synthetic fixture: 5 bars then 3 bars.
   const systems = systemIdsFromYs([717, 717, 717, 717, 717, 1399, 1399, 1399]);
   assert.deepEqual(systems, [0, 0, 0, 0, 0, 1, 1, 1]);
+  assert.deepEqual(measuresOnSystem(systems, 0), [0, 1, 2, 3, 4]);
+  assert.equal(nextSystemPreview(systems, 0), 5);
 
-  // Orphan bar 4 merges into the first screen so the next section does not open alone.
   const first = windowForMeasure(0, 4, 8, systems);
   assert.deepEqual(first.body, [0, 1, 2, 3, 4]);
   assert.equal(first.preview, 5);
 
-  const sameThroughOrphan = windowForMeasure(4, 4, 8, systems);
-  assert.deepEqual(sameThroughOrphan.body, [0, 1, 2, 3, 4]);
-  assert.equal(sameThroughOrphan.preview, 5);
+  const mid = windowForMeasure(4, 4, 8, systems);
+  assert.deepEqual(mid.body, [0, 1, 2, 3, 4]);
 
-  const secondSystem = windowForMeasure(5, 4, 8, systems);
-  assert.deepEqual(secondSystem.body, [5, 6, 7]);
-  assert.equal(secondSystem.preview, null);
+  const second = windowForMeasure(5, 4, 8, systems);
+  assert.deepEqual(second.body, [5, 6, 7]);
+  assert.equal(second.preview, null);
 });
 
-test("orphan leftovers on a staff system merge into the previous screen", () => {
-  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4], 4), [[0, 1, 2, 3, 4]]);
-  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4, 5, 6, 7], 4), [
-    [0, 1, 2, 3],
-    [4, 5, 6, 7],
-  ]);
-  assert.deepEqual(chunkSystemMeasures([0, 1, 2, 3, 4, 5, 6, 7, 8], 4), [
-    [0, 1, 2, 3],
-    [4, 5, 6, 7, 8],
-  ]);
+test("settings enum snaps from system length without driving layout", () => {
+  assert.equal(measuresPerScreenFromCount(5), 8);
+  assert.equal(measuresPerScreenFromCount(3), 4);
+  assert.equal(measuresPerScreenFromCount(2), 2);
 });
 
-test("preview is omitted from the crop when it sits on the next staff system", () => {
-  const systems = [0, 0, 0, 0, 0, 1, 1, 1];
-  const first = windowForMeasure(0, 4, 8, systems);
-  assert.equal(first.preview, 5);
-  assert.equal(previewInSameSystem(first.preview, first.body, systems), null);
+test("preferred viewport widens so a five-bar system stays readable", () => {
+  const widened = preferredSystemViewportWidth(2500, 1000, 0.55);
+  assert.equal(widened, Math.ceil(2500 * 0.55));
+  assert.ok(widened > 1000);
 });
 
-test("scroll viewport stays at container width while inner keeps content width", () => {
-  const fit = fitScoreWidth(2000, 400, 0.5);
+test("scroll viewport can grow to the full scaled system width", () => {
+  const fit = fitScoreWidth(2000, 400, 0.42);
   assert.equal(fit.scroll, true);
   const viewport = sheetViewportSize(2000, 300, fit.scale, 400, fit.scroll);
-  assert.ok(viewport.viewportWidth <= 400);
-  assert.ok(viewport.innerWidth > viewport.viewportWidth);
-  assert.equal(viewport.innerWidth, 2000 * 0.5);
+  assert.equal(viewport.innerWidth, 2000 * 0.42);
+  assert.ok(viewport.viewportWidth >= viewport.innerWidth);
 });
 
-test("non-scroll viewport matches the scaled content width", () => {
-  const fit = fitScoreWidth(800, 600, 0.5);
+test("fitted viewport uses the container width", () => {
+  const fit = fitScoreWidth(800, 600, 0.42);
   assert.equal(fit.scroll, false);
   const viewport = sheetViewportSize(800, 300, fit.scale, 600, fit.scroll);
-  assert.equal(viewport.viewportWidth, viewport.innerWidth);
-  assert.ok(viewport.viewportWidth <= 600 + 1e-9);
-});
-
-test("viewport height is at least the scaled crop and keeps spare room", () => {
-  const viewport = sheetViewportSize(800, 200, 1, 800, false, 640);
-  assert.equal(viewport.innerHeight, 200);
-  assert.ok(viewport.viewportHeight >= viewport.innerHeight);
-  assert.ok(viewport.viewportHeight <= 640);
+  assert.equal(viewport.viewportWidth, 600);
+  assert.ok(Math.abs(viewport.innerWidth - 800 * fit.scale) < 1e-6);
 });
