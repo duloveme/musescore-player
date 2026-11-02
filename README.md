@@ -21,7 +21,47 @@ npm run dev
 
 브라우저에서 `/lab`은 합성 악보 연습이다. `/songs`는 Supabase 환경변수가 있을 때 로그인 뒤 사용한다.
 
-선택한 버전과 OAuth·SQL 절차는 [docs/setup.md](docs/setup.md)에 있다.
+앱 코드의 Google 로그인(Supabase `signInWithOAuth`)은 이미 연결되어 있다. 버튼이 비활성이거나 `oauth`/`config` 오류가 나면 아래 콘솔·대시보드 설정과 환경변수가 빠진 것이다. 버전·SQL·배포 세부 절차는 [docs/setup.md](docs/setup.md)에 있다.
+
+## Google 로그인 설정
+
+리다이렉트는 두 단계다. Google → Supabase 콜백, 그다음 Supabase → 앱 `/auth/callback`. Google 콘솔에는 **Supabase 콜백만** 넣고, 앱 URL은 Supabase Redirect URLs에 넣는다.
+
+### 1. Google Cloud Console
+
+1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 만들거나 고른다.
+2. **APIs & Services → OAuth consent screen**에서 External(또는 조직용 Internal) 동의 화면을 구성한다. 테스트 단계면 테스트 사용자에 본인 Google 계정을 추가한다.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**
+   - Application type: **Web application**
+   - **Authorized JavaScript origins** (경로 없이 origin만)
+     - 로컬: `http://localhost:3000`
+     - 운영: `https://<your-app-host>`
+   - **Authorized redirect URIs** (앱의 `/auth/callback`이 아님)
+     - 호스팅 Supabase: `https://<project-ref>.supabase.co/auth/v1/callback`
+     - 로컬 Supabase CLI만 쓸 때: `http://127.0.0.1:54321/auth/v1/callback`
+4. 만든 뒤 **Client ID**와 **Client secret**을 복사한다. 저장소와 `NEXT_PUBLIC_*`에는 넣지 않는다.
+
+### 2. Supabase Dashboard
+
+1. Authentication → Providers → **Google**을 켜고 Client ID / Client secret을 붙여 넣는다.
+2. Authentication → URL Configuration
+   - **Site URL**: 운영 앱 주소 (예: `https://musescore-player.vercel.app`)
+   - **Redirect URLs**에 앱 콜백을 추가한다.
+     - `http://localhost:3000/auth/callback`
+     - Preview·운영의 `https://<host>/auth/callback`
+3. Project Settings → API에서 Project URL과 publishable key를 복사한다.
+4. SQL Editor에서 `supabase/migrations/0001_library.sql`을 한 번 실행한다.
+
+### 3. 앱 환경변수
+
+`.env.local`(로컬)과 Vercel Environment Variables(Production·Preview)에만 넣는다.
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+`service_role` / secret key는 넣지 않는다. 값이 없으면 `/login`의「Google 계정으로 계속」버튼이 비활성이다.
 
 ## 라이선스
 
