@@ -156,7 +156,7 @@ export function sheetViewportSize(
 }
 
 /** Extra crop above/below measure boxes. Tempo/rehearsal marks are drawn in HTML above the staff. */
-export const SCORE_TOP_EXTRA = 28;
+export const SCORE_TOP_EXTRA = 40;
 export const SCORE_BOTTOM_EXTRA = 56;
 export const SCORE_PAD = 48;
 
