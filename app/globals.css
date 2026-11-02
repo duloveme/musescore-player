@@ -35,7 +35,7 @@ button.primary, .button.primary {
 }
 .shell { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
 .shell:has(.practice) { max-width: min(96vw, 1600px); }
-.topbar, .practice-head, .transport, .mix, .tools, .loop-row, .sync-form, .song-list, .card form {
+.topbar, .practice-head, .tools, .loop-row, .sync-form, .song-list, .card form {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -60,9 +60,107 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
   overflow-y: hidden;
   max-width: 100%;
 }
-.sheet { position: relative; background: var(--sheet); border-radius: 12px; }
+.sheet { position: relative; background: var(--sheet); border-radius: 12px; padding: 0.75rem 0.75rem 0.9rem; }
+.sheet-canvas { position: relative; }
 .sheet-inner { position: relative; }
 .score-svg { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
+.score-svg path.RehearsalMark,
+.score-svg path.Tempo {
+  display: none;
+}
+.score-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+  min-height: 3.2rem;
+}
+.score-tempo {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.score-tempo-note { margin-right: 0.2rem; }
+.score-tempo-live { color: var(--muted); font-weight: 500; }
+.score-sections {
+  position: relative;
+  height: 1.7rem;
+}
+.score-section {
+  position: absolute;
+  top: 0;
+  transform: translateX(-2px);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+  background: white;
+  white-space: nowrap;
+}
+.practice-deck {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+}
+.deck-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
+  align-items: end;
+}
+.deck-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.deck-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 10rem;
+  flex: 1 1 10rem;
+}
+.deck-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.deck-count-in {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: auto;
+  flex: 0 1 auto;
+}
+.deck-count-toggle {
+  min-width: auto;
+}
+.deck-loop-range {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.deck-mix {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.mix-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 9rem;
+  flex: 1 1 9rem;
+}
+.deck-tools-toggle {
+  padding-top: 0.15rem;
+}
 .preview-strip {
   display: flex;
   flex-direction: column;
@@ -113,13 +211,19 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
   color: var(--accent);
   pointer-events: none;
 }
-.mix label, .transport label, .tools label, .card label {
+.tools label, .card label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   min-width: 9rem;
 }
-.check { flex-direction: row !important; align-items: center; }
+.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: auto;
+}
 input[type="text"], input[type="number"], select {
   border: 1px solid var(--line);
   border-radius: 10px;

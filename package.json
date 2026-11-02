@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test lib/sync/mapping.test.ts lib/audio/timeline.test.ts lib/score/windows.test.ts lib/score/cursor.test.ts lib/score/limitations.test.ts lib/midi/parse.test.ts lib/files/validate.test.ts lib/auth/safe-next.test.ts lib/auth/request-origin.test.ts",
+    "test": "node --experimental-strip-types --test lib/sync/mapping.test.ts lib/audio/timeline.test.ts lib/score/windows.test.ts lib/score/cursor.test.ts lib/score/limitations.test.ts lib/score/markers.test.ts lib/midi/parse.test.ts lib/files/validate.test.ts lib/auth/safe-next.test.ts lib/auth/request-origin.test.ts",
     "verify:score": "node --experimental-strip-types scripts/verify-score.mjs"
   },
   "dependencies": {

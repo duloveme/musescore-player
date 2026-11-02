@@ -11,6 +11,7 @@ import {
   limitationsFromXml,
   type ScoreLimitation,
 } from "@/lib/score/limitations";
+import { parseRehearsalMarkers, type ScoreMarker } from "@/lib/score/markers";
 
 export type ScoreNote = {
   timeMs: number;
@@ -32,6 +33,7 @@ export type LoadedScore = {
   svg: string;
   pageSize: { width: number; height: number };
   measuresGeom: ScoreBox[];
+  markers: ScoreMarker[];
   columns: NoteAnchor[];
   notes: ScoreNote[];
   limitations: ScoreLimitation[];
@@ -177,6 +179,7 @@ export async function loadScoreFile(bytes: Uint8Array, fontBytes: Uint8Array): P
     svg,
     pageSize: positions.pageSize,
     measuresGeom,
+    markers: parseRehearsalMarkers(xml),
     columns: paired.columns,
     notes: usedNotes,
     limitations,

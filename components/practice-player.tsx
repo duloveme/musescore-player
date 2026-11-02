@@ -63,7 +63,10 @@ export function PracticePlayer({
     metronomeVolume: initialSettings?.metronome_volume ?? 0.45,
     countInVolume: initialSettings?.count_in_volume ?? 0.7,
   });
-  const [countIn, setCountIn] = useState<0 | 1 | 2>(countInFromSettings(initialSettings?.count_in));
+  const initialCountIn = countInFromSettings(initialSettings?.count_in);
+  const [countInEnabled, setCountInEnabled] = useState(initialCountIn > 0);
+  const [countInBars, setCountInBars] = useState<1 | 2>(initialCountIn === 2 ? 2 : 1);
+  const countIn: 0 | 1 | 2 = countInEnabled ? countInBars : 0;
   const [countEveryLoop, setCountEveryLoop] = useState(initialSettings?.count_in_every_loop ?? false);
   const [visualOffset, setVisualOffset] = useState(initialSettings?.visual_offset_ms ?? 0);
   const [settingsVersion, setSettingsVersion] = useState(initialSettings?.version ?? 1);
@@ -268,45 +271,74 @@ export function PracticePlayer({
         </ul>
       )}
       <div className="stage" ref={stageRef}>
-        <div
-          className="sheet"
-          style={{
-            width: viewport.viewportWidth,
-            height: viewport.viewportHeight,
-            overflowX: "hidden",
-            overflowY: viewport.innerHeight > viewport.viewportHeight ? "auto" : "hidden",
-          }}
-        >
+        <div className="sheet" style={{ width: viewport.viewportWidth }}>
+          <div className="score-banner" style={{ width: viewport.innerWidth }}>
+            <p className="score-tempo">
+              <span className="score-tempo-note" aria-hidden>
+                ♩
+              </span>
+              <span>= {Math.round(model.tempoBpm)}</span>
+              {view.rate !== 1 && (
+                <span className="score-tempo-live"> · 지금 {effectiveBpm.toFixed(0)}</span>
+              )}
+            </p>
+            <div className="score-sections">
+              {model.markers
+                .filter((marker) => systemIndexes.includes(marker.measureIndex))
+                .map((marker) => {
+                  const box = model.measuresGeom[marker.measureIndex];
+                  if (!box) return null;
+                  return (
+                    <span
+                      key={`${marker.measureIndex}-${marker.label}`}
+                      className="score-section"
+                      style={{ left: (box.x - union.x + pad) * fit.scale }}
+                    >
+                      {marker.label}
+                    </span>
+                  );
+                })}
+            </div>
+          </div>
           <div
-            className="sheet-inner"
-            style={{ width: viewport.innerWidth, height: viewport.innerHeight }}
+            className="sheet-canvas"
+            style={{
+              height: viewport.viewportHeight,
+              overflowX: "hidden",
+              overflowY: viewport.innerHeight > viewport.viewportHeight ? "auto" : "hidden",
+            }}
           >
             <div
-              className="score-svg"
-              style={{
-                transform: `translate(${(pad - union.x) * fit.scale}px, ${(pad - union.y) * fit.scale}px) scale(${fit.scale})`,
-              }}
-              dangerouslySetInnerHTML={{ __html: model.svg }}
-            />
-            {systemIndexes.map((index) => {
-              const box = model.measuresGeom[index];
-              if (!box) return null;
-              const current = index === view.measureIndex;
-              const inWindow = window.body.includes(index);
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  className={
-                    current ? "measure current" : inWindow ? "measure" : "measure outside-window"
-                  }
-                  style={boxStyle(box, union, pad, fit.scale)}
-                  onClick={() => engineRef.current?.seekMeasure(index)}
-                  aria-label={`${index + 1}마디로 이동`}
-                />
-              );
-            })}
-            <div ref={cursorRef} className="cursor" hidden />
+              className="sheet-inner"
+              style={{ width: viewport.innerWidth, height: viewport.innerHeight }}
+            >
+              <div
+                className="score-svg"
+                style={{
+                  transform: `translate(${(pad - union.x) * fit.scale}px, ${(pad - union.y) * fit.scale}px) scale(${fit.scale})`,
+                }}
+                dangerouslySetInnerHTML={{ __html: model.svg }}
+              />
+              {systemIndexes.map((index) => {
+                const box = model.measuresGeom[index];
+                if (!box) return null;
+                const current = index === view.measureIndex;
+                const inWindow = window.body.includes(index);
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    className={
+                      current ? "measure current" : inWindow ? "measure" : "measure outside-window"
+                    }
+                    style={boxStyle(box, union, pad, fit.scale)}
+                    onClick={() => engineRef.current?.seekMeasure(index)}
+                    aria-label={`${index + 1}마디로 이동`}
+                  />
+                );
+              })}
+              <div ref={cursorRef} className="cursor" hidden />
+            </div>
           </div>
         </div>
         {previewBox && previewIndex !== null && (
@@ -316,114 +348,127 @@ export function PracticePlayer({
           </div>
         )}
         {view.counting && <div className="count">{view.countDisplay}</div>}
-        {fit.scroll && (
-          <p className="hint">이 시스템(한 줄)이 넓어 가로로 스크롤할 수 있습니다.</p>
-        )}
-        <p className="hint">화면은 MuseScore 시스템(한 줄) 단위입니다 · 지금 {systemIndexes.length}마디</p>
+        <p className="hint">시스템 {systemIndexes.length}마디 · MuseScore 한 줄 단위</p>
       </div>
-      <div className="transport">
-        <button type="button" className="primary" onClick={() => void togglePlay()}>
-          {view.playing || view.counting ? "일시정지" : "재생"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            engineRef.current?.stop();
-            setView(engineRef.current?.view() ?? EMPTY_VIEW);
-          }}
-        >
-          정지
-        </button>
-        <label>
-          속도 {Math.round(view.rate * 100)}%
-          <input
-            name="tempo"
-            type="range"
-            min={50}
-            max={150}
-            value={Math.round(view.rate * 100)}
-            onChange={(event) => {
-              const rate = Number(event.target.value) / 100;
-              engineRef.current?.setRate(rate);
-              setView(engineRef.current?.view() ?? { ...view, rate });
-            }}
+      <div className="practice-deck">
+        <div className="deck-row deck-transport">
+          <div className="deck-group deck-playback">
+            <button type="button" className="primary" onClick={() => void togglePlay()}>
+              {view.playing || view.counting ? "일시정지" : "재생"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                engineRef.current?.stop();
+                setView(engineRef.current?.view() ?? EMPTY_VIEW);
+              }}
+            >
+              정지
+            </button>
+          </div>
+          <label className="deck-field">
+            <span className="deck-label">속도 {Math.round(view.rate * 100)}%</span>
+            <input
+              name="tempo"
+              type="range"
+              min={50}
+              max={150}
+              value={Math.round(view.rate * 100)}
+              onChange={(event) => {
+                const rate = Number(event.target.value) / 100;
+                engineRef.current?.setRate(rate);
+                setView(engineRef.current?.view() ?? { ...view, rate });
+              }}
+            />
+          </label>
+          <div className="deck-field deck-count-in">
+            <label className="check deck-count-toggle">
+              <input
+                name="count-in-enabled"
+                type="checkbox"
+                checked={countInEnabled}
+                onChange={(event) => setCountInEnabled(event.target.checked)}
+              />
+              카운트인
+            </label>
+            <select
+              name="count-in"
+              value={countInBars}
+              disabled={!countInEnabled}
+              onChange={(event) => setCountInBars(Number(event.target.value) as 1 | 2)}
+            >
+              <option value={1}>1마디</option>
+              <option value={2}>2마디</option>
+            </select>
+          </div>
+          <div className="deck-group deck-loop">
+            <button
+              type="button"
+              onClick={() => setLoopDraft({ start: view.measureIndex, end: view.measureIndex })}
+            >
+              이 마디 반복
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setLoopDraft({
+                  start: window.start,
+                  end: window.body[window.body.length - 1] ?? window.start,
+                })
+              }
+            >
+              이 화면 반복
+            </button>
+            <button type="button" onClick={() => setLoopDraft(null)}>
+              반복 해제
+            </button>
+            {loopDraft && (
+              <span className="deck-loop-range">
+                {loopDraft.start + 1}–{loopDraft.end + 1}마디
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="deck-row deck-mix">
+          <MixToggle
+            label="원곡"
+            enabled={mix.original}
+            volume={mix.originalVolume}
+            onEnabled={(original) => setMix({ ...mix, original })}
+            onVolume={(originalVolume) => setMix({ ...mix, originalVolume })}
           />
-        </label>
-        <label>
-          카운트인
-          <select
-            name="count-in"
-            value={countIn}
-            onChange={(event) => setCountIn(Number(event.target.value) as 0 | 1 | 2)}
-          >
-            <option value={0}>없음</option>
-            <option value={1}>1마디</option>
-            <option value={2}>2마디</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => setLoopDraft({ start: view.measureIndex, end: view.measureIndex })}
-        >
-          이 마디 반복
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setLoopDraft({
-              start: window.start,
-              end: window.body[window.body.length - 1] ?? window.start,
-            })
-          }
-        >
-          이 화면 반복
-        </button>
-        <button type="button" onClick={() => setLoopDraft(null)}>
-          반복 해제
-        </button>
-        {loopDraft && (
-          <span>
-            {loopDraft.start + 1}–{loopDraft.end + 1}마디
-          </span>
-        )}
-      </div>
-      <div className="mix">
-        <MixToggle
-          label="원곡"
-          enabled={mix.original}
-          volume={mix.originalVolume}
-          onEnabled={(original) => setMix({ ...mix, original })}
-          onVolume={(originalVolume) => setMix({ ...mix, originalVolume })}
-        />
-        <MixToggle
-          label="드럼"
-          enabled={mix.drums}
-          volume={mix.drumVolume}
-          onEnabled={(drums) => setMix({ ...mix, drums })}
-          onVolume={(drumVolume) => setMix({ ...mix, drumVolume })}
-        />
-        <MixToggle
-          label="메트로놈"
-          enabled={mix.metronome}
-          volume={mix.metronomeVolume}
-          onEnabled={(metronome) => setMix({ ...mix, metronome })}
-          onVolume={(metronomeVolume) => setMix({ ...mix, metronomeVolume })}
-        />
-        <label>
-          카운트인 볼륨 {Math.round(mix.countInVolume * 100)}
-          <input
-            name="count-in-volume"
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(mix.countInVolume * 100)}
-            onChange={(event) => setMix({ ...mix, countInVolume: Number(event.target.value) / 100 })}
+          <MixToggle
+            label="드럼"
+            enabled={mix.drums}
+            volume={mix.drumVolume}
+            onEnabled={(drums) => setMix({ ...mix, drums })}
+            onVolume={(drumVolume) => setMix({ ...mix, drumVolume })}
           />
-        </label>
+          <MixToggle
+            label="메트로놈"
+            enabled={mix.metronome}
+            volume={mix.metronomeVolume}
+            onEnabled={(metronome) => setMix({ ...mix, metronome })}
+            onVolume={(metronomeVolume) => setMix({ ...mix, metronomeVolume })}
+          />
+          <label className="deck-field mix-channel">
+            <span className="deck-label">카운트인 볼륨 {Math.round(mix.countInVolume * 100)}</span>
+            <input
+              name="count-in-volume"
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(mix.countInVolume * 100)}
+              onChange={(event) => setMix({ ...mix, countInVolume: Number(event.target.value) / 100 })}
+            />
+          </label>
+        </div>
+        <div className="deck-row deck-tools-toggle">
+          <button type="button" onClick={() => setToolsOpen((open) => !open)}>
+            {toolsOpen ? "설정 접기" : "동기화·반복 설정"}
+          </button>
+        </div>
       </div>
-      <button type="button" onClick={() => setToolsOpen((open) => !open)}>
-        {toolsOpen ? "설정 접기" : "동기화·반복 설정"}
-      </button>
       {toolsOpen && <div className="tools">
         <label>
           화면 지연 {visualOffset}ms
@@ -690,17 +735,25 @@ function MixToggle({
   onVolume: (value: number) => void;
 }) {
   return (
-    <label>
-      <input name={`${label}-enabled`} type="checkbox" checked={enabled} onChange={(event) => onEnabled(event.target.checked)} />
-      {label}
+    <div className="mix-channel">
+      <label className="check">
+        <input
+          name={`${label}-enabled`}
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => onEnabled(event.target.checked)}
+        />
+        {label}
+      </label>
       <input
         name={`${label}-volume`}
         type="range"
         min={0}
         max={100}
         value={Math.round(volume * 100)}
+        disabled={!enabled}
         onChange={(event) => onVolume(Number(event.target.value) / 100)}
       />
-    </label>
+    </div>
   );
 }

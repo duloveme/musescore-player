@@ -155,8 +155,8 @@ export function sheetViewportSize(
   return { viewportWidth, viewportHeight, innerWidth, innerHeight };
 }
 
-/** Extra crop above/below measure boxes so section labels and low notes are not clipped. */
-export const SCORE_TOP_EXTRA = 130;
+/** Extra crop above/below measure boxes. Tempo/rehearsal marks are drawn in HTML above the staff. */
+export const SCORE_TOP_EXTRA = 28;
 export const SCORE_BOTTOM_EXTRA = 56;
 export const SCORE_PAD = 48;
 
