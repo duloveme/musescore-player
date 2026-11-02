@@ -159,10 +159,14 @@ export function PracticePlayer({
       if (engine) {
         engine.tick();
         const next = engine.view();
-        const nextSignature = `${next.playing}|${next.counting}|${next.countDisplay}|${next.measureIndex}|${next.rate}|${next.stretch}`;
+        const loopSig = next.loop
+          ? `${next.loop.start}:${next.loop.end}:${next.loop.remaining}`
+          : "-";
+        const nextSignature = `${next.playing}|${next.counting}|${next.countDisplay}|${next.measureIndex}|${next.rate}|${next.stretch}|${loopSig}`;
         if (nextSignature !== signature) {
           signature = nextSignature;
           setView(next);
+          if (!next.loop) setLoopActive(false);
         }
         const cursor = cursorRef.current;
         const paint = paintRef.current;
@@ -237,10 +241,6 @@ export function PracticePlayer({
   });
 
   useEffect(() => {
-    if (loopActive && !view.loop) setLoopActive(false);
-  }, [view.loop, loopActive]);
-
-  useEffect(() => {
     if (!model) return;
     const last = Math.max(1, model.measuresGeom.length);
     setLoopStart((current) => Math.min(current, last));
@@ -282,6 +282,14 @@ export function PracticePlayer({
         <p className="meta">
           {model.timeSignature} · 악보 {Math.round(model.tempoBpm)} BPM · 지금 {effectiveBpm.toFixed(0)} BPM ·{" "}
           {view.measureIndex + 1}마디
+          {loopActive && view.loop && (
+            <>
+              {" · "}
+              <span className="loop-meta-on">
+                반복 {view.loop.start + 1}–{view.loop.end + 1} · 남은 {view.loop.remaining}회
+              </span>
+            </>
+          )}
         </p>
       </header>
       {model.limitations.length > 0 && (
@@ -347,19 +355,15 @@ export function PracticePlayer({
                 const inWindow = window.body.includes(index);
                 const inLoop =
                   view.loop !== null && index >= view.loop.start && index <= view.loop.end;
+                const classes = ["measure"];
+                if (current) classes.push("current");
+                if (inLoop) classes.push("in-loop");
+                if (!inWindow) classes.push("outside-window");
                 return (
                   <button
                     key={index}
                     type="button"
-                    className={
-                      current
-                        ? "measure current"
-                        : inLoop
-                          ? "measure in-loop"
-                          : inWindow
-                            ? "measure"
-                            : "measure outside-window"
-                    }
+                    className={classes.join(" ")}
                     style={boxStyle(box, union, pad, fit.scale)}
                     onClick={() => engineRef.current?.seekMeasure(index)}
                     aria-label={`${index + 1}마디로 이동`}
@@ -369,10 +373,12 @@ export function PracticePlayer({
               {systemIndexes.map((index) => {
                 const box = model.measuresGeom[index];
                 if (!box) return null;
+                const inLoop =
+                  view.loop !== null && index >= view.loop.start && index <= view.loop.end;
                 return (
                   <span
                     key={`num-${index}`}
-                    className="measure-number"
+                    className={inLoop ? "measure-number in-loop" : "measure-number"}
                     style={{
                       left: (box.x - union.x + pad) * fit.scale + 4,
                       top: (box.y - union.y + pad) * fit.scale - 18 * fit.scale,
@@ -447,84 +453,104 @@ export function PracticePlayer({
             </select>
           </div>
         </div>
-        <div className="deck-row deck-loop-panel">
-          <label className="deck-field deck-field-narrow">
-            <span className="deck-label">시작 마디</span>
-            <input
-              name="loop-start"
-              type="number"
-              min={1}
-              max={model.measuresGeom.length}
-              value={loopStart}
-              onChange={(event) => setLoopStart(Math.max(1, Number(event.target.value) || 1))}
-            />
-          </label>
-          <label className="deck-field deck-field-narrow">
-            <span className="deck-label">끝 마디</span>
-            <input
-              name="loop-end"
-              type="number"
-              min={1}
-              max={model.measuresGeom.length}
-              value={loopEnd}
-              onChange={(event) => setLoopEnd(Math.max(1, Number(event.target.value) || 1))}
-            />
-          </label>
-          <label className="deck-field deck-field-narrow">
-            <span className="deck-label">반복 횟수</span>
-            <input
-              name="loop-times"
-              type="number"
-              min={1}
-              max={99}
-              value={loopTimes}
-              onChange={(event) => setLoopTimes(Math.max(1, Number(event.target.value) || 1))}
-            />
-          </label>
-          <label className="deck-field">
-            <span className="deck-label">반복 속도 {loopRate}%</span>
-            <input
-              name="loop-rate"
-              type="range"
-              min={50}
-              max={150}
-              value={loopRate}
-              onChange={(event) => setLoopRate(Number(event.target.value))}
-            />
-          </label>
-          <div className="deck-group">
-            <button
-              type="button"
-              className="primary"
-              onClick={() => {
-                const last = Math.max(1, model.measuresGeom.length);
-                const start = Math.min(last, Math.max(1, loopStart));
-                const end = Math.min(last, Math.max(start, loopEnd));
-                setLoopStart(start);
-                setLoopEnd(end);
-                setLoopActive(true);
-                const rate = loopRate / 100;
-                engineRef.current?.setRate(rate);
-                engineRef.current?.seekMeasure(start - 1);
-                setView(engineRef.current?.view() ?? { ...view, rate });
-              }}
-            >
-              반복 적용
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setLoopActive(false);
-                engineRef.current?.setLoop(null);
-              }}
-            >
-              반복 해제
-            </button>
-            {loopActive && view.loop && (
-              <span className="deck-loop-range">
-                {view.loop.start + 1}–{view.loop.end + 1}마디 · 남은 {view.loop.remaining}회
-              </span>
+        <div className={`deck-loop-panel${loopActive && view.loop ? " is-on" : ""}`}>
+          <div className="deck-loop-status" aria-live="polite">
+            {loopActive && view.loop ? (
+              <>
+                <span className="loop-pill on">반복 ON</span>
+                <span className="deck-loop-range">
+                  {view.loop.start + 1}–{view.loop.end + 1}마디 · 남은 {view.loop.remaining}회 ·{" "}
+                  {Math.round(view.rate * 100)}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="loop-pill off">반복 OFF</span>
+                <span className="deck-loop-range">시작·끝 마디를 정한 뒤 적용하세요</span>
+              </>
             )}
+          </div>
+          <div className="deck-row deck-loop-fields">
+            <label className="deck-field deck-field-narrow">
+              <span className="deck-label">시작 마디</span>
+              <input
+                name="loop-start"
+                type="number"
+                min={1}
+                max={model.measuresGeom.length}
+                value={loopStart}
+                onChange={(event) => setLoopStart(Math.max(1, Number(event.target.value) || 1))}
+              />
+            </label>
+            <label className="deck-field deck-field-narrow">
+              <span className="deck-label">끝 마디</span>
+              <input
+                name="loop-end"
+                type="number"
+                min={1}
+                max={model.measuresGeom.length}
+                value={loopEnd}
+                onChange={(event) => setLoopEnd(Math.max(1, Number(event.target.value) || 1))}
+              />
+            </label>
+            <label className="deck-field deck-field-narrow">
+              <span className="deck-label">반복 횟수</span>
+              <input
+                name="loop-times"
+                type="number"
+                min={1}
+                max={99}
+                value={loopTimes}
+                onChange={(event) => setLoopTimes(Math.max(1, Number(event.target.value) || 1))}
+              />
+            </label>
+            <label className="deck-field">
+              <span className="deck-label">반복 속도 {loopRate}%</span>
+              <input
+                name="loop-rate"
+                type="range"
+                min={50}
+                max={150}
+                value={loopRate}
+                onChange={(event) => setLoopRate(Number(event.target.value))}
+              />
+            </label>
+            <div className="deck-group deck-loop-actions">
+              <button
+                type="button"
+                className={loopActive ? "loop-apply is-active" : "primary loop-apply"}
+                aria-pressed={loopActive}
+                onClick={() => {
+                  const engine = engineRef.current;
+                  if (!engine) return;
+                  const last = Math.max(1, model.measuresGeom.length);
+                  const start = Math.min(last, Math.max(1, loopStart));
+                  const end = Math.min(last, Math.max(start, loopEnd));
+                  setLoopStart(start);
+                  setLoopEnd(end);
+                  setLoopActive(true);
+                  const rate = loopRate / 100;
+                  engine.setRate(rate);
+                  engine.setLoop({ start: start - 1, end: end - 1, times: loopTimes });
+                  engine.seekMeasure(start - 1);
+                  setView(engine.view());
+                }}
+              >
+                {loopActive ? "다시 적용" : "반복 적용"}
+              </button>
+              <button
+                type="button"
+                className={loopActive ? "loop-clear is-ready" : "loop-clear"}
+                disabled={!loopActive}
+                onClick={() => {
+                  setLoopActive(false);
+                  engineRef.current?.setLoop(null);
+                  setView(engineRef.current?.view() ?? { ...view, loop: null });
+                }}
+              >
+                반복 해제
+              </button>
+            </div>
           </div>
         </div>
         <div className="deck-row deck-mix">
