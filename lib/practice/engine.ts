@@ -19,6 +19,12 @@ export type MixState = {
   countInVolume: number;
 };
 
+export type EngineLoop = {
+  start: number;
+  end: number;
+  remaining: number;
+};
+
 export type EngineView = {
   scoreMs: number;
   playing: boolean;
@@ -27,10 +33,15 @@ export type EngineView = {
   rate: number;
   stretch: "ready" | "unavailable" | "idle";
   measureIndex: number;
-  loop: { start: number; end: number } | null;
+  loop: EngineLoop | null;
 };
 
-type Loop = { start: number; end: number };
+type Loop = {
+  start: number;
+  end: number;
+  /** Plays left including the current pass. */
+  remaining: number;
+};
 
 export class PracticeEngine {
   private readonly originalGain: GainNode;
@@ -117,9 +128,14 @@ export class PracticeEngine {
     this.applyMix();
   }
 
-  setLoop(loop: Loop | null): void {
-    if (loop && loop.end < loop.start) return;
-    this.loop = loop;
+  setLoop(loop: { start: number; end: number; times: number } | null): void {
+    if (!loop) {
+      this.loop = null;
+      return;
+    }
+    if (loop.end < loop.start) return;
+    const times = Math.max(1, Math.floor(loop.times));
+    this.loop = { start: loop.start, end: loop.end, remaining: times };
   }
 
   seekScore(scoreMs: number): void {
@@ -165,9 +181,19 @@ export class PracticeEngine {
     if (this.playing) {
       const scoreMs = this.currentScoreMs();
       const loopEnd = this.loopEndMs();
-      if (loopEnd !== null && scoreMs >= loopEnd) {
-        const start = this.model.measuresGeom[this.loop!.start]?.timeMs ?? 0;
-        this.restartAt(start, this.countInEveryLoop);
+      if (loopEnd !== null && this.loop && scoreMs >= loopEnd) {
+        const nextRemaining = this.loop.remaining - 1;
+        if (nextRemaining > 0) {
+          this.loop = { ...this.loop, remaining: nextRemaining };
+          const start = this.model.measuresGeom[this.loop.start]?.timeMs ?? 0;
+          this.restartAt(start, this.countInEveryLoop);
+        } else {
+          this.loop = null;
+          this.scoreMs = Math.max(0, loopEnd - 1);
+          this.hardStop();
+          this.playing = false;
+          this.counting = false;
+        }
         return;
       }
       this.scheduleAhead(scoreMs);
@@ -194,7 +220,7 @@ export class PracticeEngine {
       rate: this.rate,
       stretch: this.stretch,
       measureIndex: this.measureIndex(scoreMs),
-      loop: this.loop,
+      loop: this.loop ? { ...this.loop } : null,
     };
   }
 

@@ -71,11 +71,14 @@ export function PracticePlayer({
   const [visualOffset, setVisualOffset] = useState(initialSettings?.visual_offset_ms ?? 0);
   const [settingsVersion, setSettingsVersion] = useState(initialSettings?.version ?? 1);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [loopName, setLoopName] = useState("반복");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [sync, setSync] = useState<SyncPoint[]>(initialSync);
   const [audioSeconds, setAudioSeconds] = useState(initialSync[0]?.audioSec ?? 0);
-  const [loopDraft, setLoopDraft] = useState<{ start: number; end: number } | null>(null);
+  const [loopStart, setLoopStart] = useState(1);
+  const [loopEnd, setLoopEnd] = useState(1);
+  const [loopTimes, setLoopTimes] = useState(3);
+  const [loopRate, setLoopRate] = useState(100);
+  const [loopActive, setLoopActive] = useState(false);
   const [wakeSupported, setWakeSupported] = useState<boolean | null>(null);
   const [width, setWidth] = useState(800);
   const engineRef = useRef<PracticeEngine | null>(null);
@@ -205,8 +208,15 @@ export function PracticePlayer({
   }, [sync]);
 
   useEffect(() => {
-    engineRef.current?.setLoop(loopDraft);
-  }, [loopDraft]);
+    if (!loopActive || !model) {
+      engineRef.current?.setLoop(null);
+      return;
+    }
+    const last = Math.max(0, model.measuresGeom.length - 1);
+    const start = Math.min(last, Math.max(0, loopStart - 1));
+    const end = Math.min(last, Math.max(start, loopEnd - 1));
+    engineRef.current?.setLoop({ start, end, times: loopTimes });
+  }, [loopActive, loopStart, loopEnd, loopTimes, model]);
 
   async function togglePlay() {
     const engine = engineRef.current;
@@ -225,6 +235,17 @@ export function PracticePlayer({
   useEffect(() => {
     paintRef.current = { model, visualOffset, width };
   });
+
+  useEffect(() => {
+    if (loopActive && !view.loop) setLoopActive(false);
+  }, [view.loop, loopActive]);
+
+  useEffect(() => {
+    if (!model) return;
+    const last = Math.max(1, model.measuresGeom.length);
+    setLoopStart((current) => Math.min(current, last));
+    setLoopEnd((current) => Math.min(Math.max(current, 1), last));
+  }, [model]);
 
   if (error) {
     return <p className="banner error">{error}</p>;
@@ -324,17 +345,41 @@ export function PracticePlayer({
                 if (!box) return null;
                 const current = index === view.measureIndex;
                 const inWindow = window.body.includes(index);
+                const inLoop =
+                  view.loop !== null && index >= view.loop.start && index <= view.loop.end;
                 return (
                   <button
                     key={index}
                     type="button"
                     className={
-                      current ? "measure current" : inWindow ? "measure" : "measure outside-window"
+                      current
+                        ? "measure current"
+                        : inLoop
+                          ? "measure in-loop"
+                          : inWindow
+                            ? "measure"
+                            : "measure outside-window"
                     }
                     style={boxStyle(box, union, pad, fit.scale)}
                     onClick={() => engineRef.current?.seekMeasure(index)}
                     aria-label={`${index + 1}마디로 이동`}
                   />
+                );
+              })}
+              {systemIndexes.map((index) => {
+                const box = model.measuresGeom[index];
+                if (!box) return null;
+                return (
+                  <span
+                    key={`num-${index}`}
+                    className="measure-number"
+                    style={{
+                      left: (box.x - union.x + pad) * fit.scale + 4,
+                      top: (box.y - union.y + pad) * fit.scale - 18 * fit.scale,
+                    }}
+                  >
+                    {index + 1}
+                  </span>
                 );
               })}
               <div ref={cursorRef} className="cursor" hidden />
@@ -401,30 +446,83 @@ export function PracticePlayer({
               <option value={2}>2마디</option>
             </select>
           </div>
-          <div className="deck-group deck-loop">
+        </div>
+        <div className="deck-row deck-loop-panel">
+          <label className="deck-field deck-field-narrow">
+            <span className="deck-label">시작 마디</span>
+            <input
+              name="loop-start"
+              type="number"
+              min={1}
+              max={model.measuresGeom.length}
+              value={loopStart}
+              onChange={(event) => setLoopStart(Math.max(1, Number(event.target.value) || 1))}
+            />
+          </label>
+          <label className="deck-field deck-field-narrow">
+            <span className="deck-label">끝 마디</span>
+            <input
+              name="loop-end"
+              type="number"
+              min={1}
+              max={model.measuresGeom.length}
+              value={loopEnd}
+              onChange={(event) => setLoopEnd(Math.max(1, Number(event.target.value) || 1))}
+            />
+          </label>
+          <label className="deck-field deck-field-narrow">
+            <span className="deck-label">반복 횟수</span>
+            <input
+              name="loop-times"
+              type="number"
+              min={1}
+              max={99}
+              value={loopTimes}
+              onChange={(event) => setLoopTimes(Math.max(1, Number(event.target.value) || 1))}
+            />
+          </label>
+          <label className="deck-field">
+            <span className="deck-label">반복 속도 {loopRate}%</span>
+            <input
+              name="loop-rate"
+              type="range"
+              min={50}
+              max={150}
+              value={loopRate}
+              onChange={(event) => setLoopRate(Number(event.target.value))}
+            />
+          </label>
+          <div className="deck-group">
             <button
               type="button"
-              onClick={() => setLoopDraft({ start: view.measureIndex, end: view.measureIndex })}
+              className="primary"
+              onClick={() => {
+                const last = Math.max(1, model.measuresGeom.length);
+                const start = Math.min(last, Math.max(1, loopStart));
+                const end = Math.min(last, Math.max(start, loopEnd));
+                setLoopStart(start);
+                setLoopEnd(end);
+                setLoopActive(true);
+                const rate = loopRate / 100;
+                engineRef.current?.setRate(rate);
+                engineRef.current?.seekMeasure(start - 1);
+                setView(engineRef.current?.view() ?? { ...view, rate });
+              }}
             >
-              이 마디 반복
+              반복 적용
             </button>
             <button
               type="button"
-              onClick={() =>
-                setLoopDraft({
-                  start: window.start,
-                  end: window.body[window.body.length - 1] ?? window.start,
-                })
-              }
+              onClick={() => {
+                setLoopActive(false);
+                engineRef.current?.setLoop(null);
+              }}
             >
-              이 화면 반복
-            </button>
-            <button type="button" onClick={() => setLoopDraft(null)}>
               반복 해제
             </button>
-            {loopDraft && (
+            {loopActive && view.loop && (
               <span className="deck-loop-range">
-                {loopDraft.start + 1}–{loopDraft.end + 1}마디
+                {view.loop.start + 1}–{view.loop.end + 1}마디 · 남은 {view.loop.remaining}회
               </span>
             )}
           </div>
@@ -576,8 +674,12 @@ export function PracticePlayer({
                 lastMeasure: view.measureIndex,
                 visualOffsetMs: visualOffset,
                 sync: sync.map((point) => ({ scoreMs: point.scoreMs, audioSec: point.audioSec })),
-                loop: loopDraft
-                  ? { name: loopName, startMeasure: loopDraft.start, endMeasure: loopDraft.end }
+                loop: loopActive
+                  ? {
+                      name: `${loopStart}-${loopEnd}`,
+                      startMeasure: Math.max(0, loopStart - 1),
+                      endMeasure: Math.max(0, loopEnd - 1),
+                    }
                   : null,
               })
                 .then((version) => {
@@ -594,10 +696,6 @@ export function PracticePlayer({
         ) : (
           <p className="hint">이 화면은 합성 악보 확인용이며 서버에 저장하지 않습니다.</p>
         )}
-        <label>
-          반복 이름
-          <input name="loop-name" type="text" value={loopName} onChange={(event) => setLoopName(event.target.value)} />
-        </label>
         {saveMessage && <p>{saveMessage}</p>}
       </div>}
     </section>

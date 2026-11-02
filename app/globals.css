@@ -191,8 +191,27 @@ h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.2rem 0; }
   padding: 0;
 }
 .measure.current { background: rgba(194, 65, 12, 0.12); }
+.measure.in-loop { background: rgba(194, 65, 12, 0.06); }
 .measure.outside-window { opacity: 0.72; }
 .measure.preview { background: rgba(28, 25, 21, 0.06); pointer-events: none; }
+.measure-number {
+  position: absolute;
+  z-index: 2;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  pointer-events: none;
+  line-height: 1;
+}
+.deck-loop-panel {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  align-items: end;
+}
+.deck-field-narrow {
+  flex: 0 0 6.5rem;
+  min-width: 6.5rem;
+}
 .cursor {
   position: absolute;
   top: 8px;
